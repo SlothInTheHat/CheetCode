@@ -113,17 +113,17 @@ print_list(reversed_head)`,
 ];
 
 /**
- * Fetch up to 50 problems from Supabase database.
+ * Fetch problems from Supabase database (LEETCODE PROBLEMS table).
  * Falls back to local problems if Supabase is unavailable.
  */
 export const loadProblems = async (): Promise<Problem[]> => {
   try {
     console.log('Attempting to load problems from Supabase...');
     const { data, error } = await supabase
-      .from('problems')
+      .from('LEETCODE PROBLEMS')
       .select('*')
-      .limit(50)
-      .order('difficulty', { ascending: true });
+      .limit(2000)
+      .order('Difficulty', { ascending: true });
 
     if (error) {
       console.error('Supabase error:', error);
@@ -138,9 +138,9 @@ export const loadProblems = async (): Promise<Problem[]> => {
 
     // Transform the data to match the Problem interface
     const transformed = data.map((row: any) => {
-      const starterCode = row.starterCode || row.starter_code || row.start_code || '';
+      const starterCode = row.starter_code || '';
       const testCases = (() => {
-        let tc = row.testCases || row.test_cases || row.tests || [];
+        let tc = row.test_cases || [];
         if (typeof tc === 'string') {
           try {
             tc = JSON.parse(tc);
@@ -152,7 +152,7 @@ export const loadProblems = async (): Promise<Problem[]> => {
       })();
 
       return {
-        id: row.id || row.problem_id || '',
+        id: row.id || '',
         title: row.title || '',
         difficulty: (row.difficulty || 'Easy') as 'Easy' | 'Medium' | 'Hard',
         description: row.description || '',
