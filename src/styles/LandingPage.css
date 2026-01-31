@@ -4,7 +4,7 @@
   flex-direction: column;
   align-items: center;
   padding: 2rem;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: var(--bg-dark);
 }
 
 .landing-header {
@@ -14,23 +14,20 @@
 }
 
 .landing-icon {
-  color: #646cff;
+  color: var(--primary);
   margin-bottom: 1rem;
-  animation: pulse 2s infinite;
 }
 
 .landing-header h1 {
   font-size: 3rem;
   margin: 0.5rem 0;
-  background: linear-gradient(135deg, #646cff 0%, #747bff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .landing-subtitle {
   font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
   max-width: 600px;
   margin: 0 auto;
 }
@@ -45,10 +42,10 @@
 }
 
 .filter-section {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
   padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
   animation: slideUp 0.6s ease-out;
 }
 
@@ -57,7 +54,7 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
-  color: #646cff;
+  color: var(--primary);
 }
 
 .filter-header h3 {
@@ -74,10 +71,10 @@
 
 .difficulty-btn {
   padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -85,30 +82,32 @@
 }
 
 .difficulty-btn:hover {
-  border-color: #646cff;
-  background: rgba(100, 108, 255, 0.1);
-  transform: translateY(-2px);
+  border-color: var(--primary);
+  background: var(--bg-dark);
 }
 
 .difficulty-btn.active {
-  border-color: #646cff;
-  background: #646cff;
+  border-color: var(--primary);
+  background: var(--primary);
   color: white;
 }
 
 .difficulty-btn.easy.active {
-  border-color: #4ade80;
-  background: #4ade80;
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
 }
 
 .difficulty-btn.medium.active {
-  border-color: #fbbf24;
-  background: #fbbf24;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
 }
 
 .difficulty-btn.hard.active {
-  border-color: #f87171;
-  background: #f87171;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
 }
 
 .tag-container {
@@ -119,24 +118,23 @@
 
 .tag {
   padding: 0.5rem 1rem;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .tag:hover {
-  border-color: #646cff;
-  background: rgba(100, 108, 255, 0.1);
-  transform: scale(1.05);
+  border-color: var(--primary);
+  background: var(--bg-dark);
 }
 
 .tag.active {
-  border-color: #646cff;
-  background: #646cff;
+  border-color: var(--primary);
+  background: var(--primary);
   color: white;
 }
 
@@ -154,16 +152,14 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  box-shadow: 0 4px 12px rgba(100, 108, 255, 0.3);
 }
 
 .btn-large:hover {
-  box-shadow: 0 6px 16px rgba(100, 108, 255, 0.4);
   transform: translateY(-2px);
 }
 
 .filter-summary {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   text-align: center;
   margin: 0;
@@ -173,12 +169,12 @@
   margin-top: auto;
   padding-top: 2rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
 .landing-footer a {
-  color: #646cff;
+  color: var(--primary);
   text-decoration: none;
 }
 
