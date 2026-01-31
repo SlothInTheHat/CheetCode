@@ -113,17 +113,17 @@ print_list(reversed_head)`,
 ];
 
 /**
- * Fetch up to 50 problems from Supabase database.
+ * Fetch problems from Supabase database (LEETCODE PROBLEMS table).
  * Falls back to local problems if Supabase is unavailable.
  */
 export const loadProblems = async (): Promise<Problem[]> => {
   try {
     console.log('Attempting to load problems from Supabase...');
     const { data, error } = await supabase
-      .from('problems')
+      .from('LEETCODE PROBLEMS')
       .select('*')
-      .limit(50)
-      .order('difficulty', { ascending: true });
+      .limit(2000)
+      .order('Difficulty', { ascending: true });
 
     if (error) {
       console.error('Supabase error:', error);
