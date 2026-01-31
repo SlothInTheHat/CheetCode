@@ -1,6 +1,8 @@
 import type { Problem } from '../types/index';
+import { supabase } from '../lib/supabase';
 
-export const problems: Problem[] = [
+// Fallback local problems (used if Supabase is unavailable)
+const fallbackProblems: Problem[] = [
   {
     id: 'two-sum',
     title: 'Two Sum',
@@ -110,4 +112,61 @@ print_list(reversed_head)`,
   },
 ];
 
-export const getDefaultProblem = () => problems[0];
+/**
+ * Fetch up to 50 problems from Supabase database.
+ * Assumes the table is named 'problems' with columns:
+ * id, title, difficulty, description, starterCode (or starter_code), testCases (or test_cases, JSON)
+ */
+export const loadProblems = async (): Promise<Problem[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('problems')
+      .select('*')
+      .limit(50)
+      .order('difficulty', { ascending: true });
+
+    if (error) {
+      console.error('Error loading problems from Supabase:', error);
+      return fallbackProblems;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('No problems found in Supabase, using fallback problems');
+      return fallbackProblems;
+    }
+
+    // Transform the data to match the Problem interface
+    const transformed = data.map((row: any) => {
+      // Handle various column naming conventions
+      const starterCode = row.starterCode || row.starter_code || row.start_code || '';
+      const testCases = (() => {
+        let tc = row.testCases || row.test_cases || row.tests || [];
+        if (typeof tc === 'string') {
+          try {
+            tc = JSON.parse(tc);
+          } catch {
+            tc = [];
+          }
+        }
+        return Array.isArray(tc) ? tc : [];
+      })();
+
+      return {
+        id: row.id || row.problem_id || '',
+        title: row.title || '',
+        difficulty: (row.difficulty || 'Easy') as 'Easy' | 'Medium' | 'Hard',
+        description: row.description || '',
+        starterCode,
+        testCases,
+      };
+    });
+
+    console.log(`Successfully loaded ${transformed.length} problems from Supabase`);
+    return transformed;
+  } catch (err) {
+    console.error('Failed to load problems:', err);
+    return fallbackProblems;
+  }
+};
+
+export const getDefaultProblem = () => fallbackProblems[0];

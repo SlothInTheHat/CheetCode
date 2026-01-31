@@ -1,11 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import InterviewPanel from './components/InterviewPanel';
-import { problems, getDefaultProblem } from './data/problems';
+import { loadProblems, getDefaultProblem } from './data/problems';
+import type { Problem } from './types/index';
 import { Brain } from 'lucide-react';
 import './App.css';
 
 function App() {
-  const [currentProblem, setCurrentProblem] = useState(getDefaultProblem());
+  const [problems, setProblems] = useState<Problem[]>([]);
+  const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load problems from Supabase on mount
+  useEffect(() => {
+    const fetchProblems = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        console.log('Fetching problems from Supabase...');
+        const data = await loadProblems();
+        console.log('Received problems:', data.length, data);
+        setProblems(data);
+        if (data.length > 0) {
+          setCurrentProblem(data[0]);
+        } else {
+          console.warn('No problems loaded, using default');
+          setCurrentProblem(getDefaultProblem());
+        }
+      } catch (err) {
+        console.error('Failed to fetch problems:', err);
+        setError('Failed to load problems. Using fallback.');
+        const fallback = getDefaultProblem();
+        setProblems([fallback]);
+        setCurrentProblem(fallback);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProblems();
+  }, []);
 
   const handleProblemChange = (problemId: string) => {
     const problem = problems.find((p) => p.id === problemId);
@@ -13,6 +47,22 @@ function App() {
       setCurrentProblem(problem);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <div className="logo">
+            <Brain size={32} />
+            <h1>AI Interview Coach</h1>
+          </div>
+        </header>
+        <main className="app-main" style={{ textAlign: 'center', padding: '2rem' }}>
+          <p>Loading problems...</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -23,9 +73,10 @@ function App() {
         </div>
         <div className="problem-selector">
           <label htmlFor="problem-select">Problem:</label>
+          {error && <span style={{ color: '#ff6b6b', marginRight: '0.5rem' }}>⚠ {error}</span>}
           <select
             id="problem-select"
-            value={currentProblem.id}
+            value={currentProblem?.id || ''}
             onChange={(e) => handleProblemChange(e.target.value)}
           >
             {problems.map((problem) => (
@@ -38,7 +89,9 @@ function App() {
       </header>
 
       <main className="app-main">
-        <InterviewPanel problem={currentProblem} onProblemChange={handleProblemChange} />
+        {currentProblem && (
+          <InterviewPanel problem={currentProblem} onProblemChange={handleProblemChange} />
+        )}
       </main>
 
       <footer className="app-footer">
