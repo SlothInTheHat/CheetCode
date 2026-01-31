@@ -124,12 +124,21 @@ export interface ProblemFilters {
  */
 export const loadProblems = async (filters?: ProblemFilters): Promise<Problem[]> => {
   try {
-    console.log('Attempting to load problems from Supabase...');
-    const { data, error } = await supabase
-      .from('problems')
+    console.log('Attempting to load problems from Supabase with filters:', filters);
+
+    // Build query with difficulty filter if specified
+    let query = supabase
+      .from('LEETCODE PROBLEMS')
       .select('*')
-      .limit(50)
-      .order('difficulty', { ascending: true });
+      .limit(2000);
+
+    if (filters?.difficulty && filters.difficulty !== 'all') {
+      query = query.eq('difficulty', filters.difficulty);
+    }
+
+    query = query.order('difficulty', { ascending: true });
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Supabase error:', error);
@@ -163,8 +172,8 @@ export const loadProblems = async (filters?: ProblemFilters): Promise<Problem[]>
       });
     }
 
-    // Transform the data to match the Problem interface
-    const transformed = data.map((row: any) => {
+    // Transform the filtered data to match the Problem interface
+    const transformed = filteredData.map((row: any) => {
       const starterCode = row.starterCode || row.starter_code || row.start_code || '';
       const testCases = (() => {
         let tc = row.test_cases || [];
