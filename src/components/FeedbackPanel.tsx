@@ -1,4 +1,4 @@
-import { SessionFeedback } from '../types';
+import type { SessionFeedback } from '../types/index';
 import { CheckCircle2, XCircle, Lightbulb, TrendingUp } from 'lucide-react';
 
 interface FeedbackPanelProps {

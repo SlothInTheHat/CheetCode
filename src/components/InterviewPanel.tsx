@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Play, HelpCircle, CheckSquare, Loader2, Terminal } from 'lucide-react';
 import CodeEditor from './CodeEditor';
 import FeedbackPanel from './FeedbackPanel';
-import type { Problem, SessionFeedback, InterviewerHint } from '../types';
+import type { Problem, SessionFeedback, InterviewerHint } from '../types/index';
 import axios from 'axios';
 
 interface InterviewPanelProps {
