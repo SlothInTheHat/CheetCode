@@ -235,7 +235,7 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: Audi
             <div className="transcript-entry partial">
               <span className="text">{partialText}</span>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
