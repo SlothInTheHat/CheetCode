@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, HelpCircle, CheckSquare, Loader2, Terminal, Settings } from 'lucide-react';
+import { Play, Pause, HelpCircle, CheckSquare, Loader2, Terminal } from 'lucide-react';
 import CodeEditor from './CodeEditor';
 import FeedbackPanel from './FeedbackPanel';
 import TelemetryPanel from './TelemetryPanel';
@@ -49,9 +49,18 @@ interface SessionTelemetry {
 interface InterviewPanelProps {
   problem: Problem;
   onProblemChange: (problemId: string) => void;
+  mode: 'v1' | 'v2';
+  showVoiceSettings: boolean;
+  setShowVoiceSettings: (show: boolean) => void;
 }
 
-export default function InterviewPanel({ problem, onProblemChange: _onProblemChange }: InterviewPanelProps) {
+export default function InterviewPanel({ 
+  problem, 
+  onProblemChange: _onProblemChange,
+  mode,
+  showVoiceSettings,
+  setShowVoiceSettings
+}: InterviewPanelProps) {
   // Generate unique session ID for transcript tracking
   const [sessionId] = useState(() => crypto.randomUUID());
   const [leftPanelWidth, setLeftPanelWidth] = useState(35); // percentage
@@ -72,7 +81,6 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
     feedback: null,
     executions: [],
   });
-  const [mode, setMode] = useState<'v1' | 'v2'>('v1');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTranscript, setRecordingTranscript] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -80,10 +88,10 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
   const [voicePitch, setVoicePitch] = useState(1.1);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', text: string}>>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [speakingMessageText, setSpeakingMessageText] = useState<string | null>(null);
 
   // Load Google voices
   useEffect(() => {
@@ -128,6 +136,7 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
     setIsSpeaking(true);
+    setSpeakingMessageText(text);
 
     const sentences = splitIntoSentences(text);
     let sentenceIndex = 0;
@@ -156,11 +165,15 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
 
       utterance.onend = () => {
         sentenceIndex++;
+        if (sentenceIndex >= sentences.length) {
+          setSpeakingMessageText(null);
+        }
         setTimeout(speakNextSentence, 300); // Pause between sentences
       };
 
       utterance.onerror = () => {
         setIsSpeaking(false);
+        setSpeakingMessageText(null);
       };
 
       window.speechSynthesis.speak(utterance);
@@ -172,6 +185,7 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
   const stopSpeaking = () => {
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
+    setSpeakingMessageText(null);
   };
 
   const handleUserSpeech = async (spokenText: string) => {
@@ -448,42 +462,6 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
 
   return (
     <div className="interview-panel">
-      <div className="interview-header">
-        <div>
-          <h1 className="problem-title">{problem.title}</h1>
-          <span className={`difficulty ${problem.difficulty.toLowerCase()}`}>
-            {problem.difficulty}
-          </span>
-        </div>
-        <div className="header-controls">
-          <div className="mode-selector">
-            <label style={{ fontWeight: 'bold', marginRight: '0.75rem' }}>Mode:</label>
-            <button
-              className={`btn ${mode === 'v1' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setMode('v1')}
-              style={{ marginRight: '0.5rem' }}
-            >
-              Strict
-            </button>
-            <button
-              className={`btn ${mode === 'v2' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setMode('v2')}
-            >
-              Supportive
-            </button>
-          </div>
-          <button
-            className={`btn ${showVoiceSettings ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setShowVoiceSettings(!showVoiceSettings)}
-            title="Voice Settings"
-            style={{ marginLeft: '1rem' }}
-          >
-            <Settings size={18} />
-            Voice
-          </button>
-        </div>
-      </div>
-
       {/* Voice Settings Panel */}
       {showVoiceSettings && (
         <div
@@ -567,6 +545,52 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
         </div>
       )}
 
+      {/* Notification Bar - Latest AI Message */}
+      <div 
+        style={{
+          background: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          borderRadius: '0.5rem',
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          minHeight: '3rem',
+        }}
+      >
+        <HelpCircle size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+        <div style={{ flex: 1, fontSize: '0.9rem', color: 'var(--text)', lineHeight: '1.5' }}>
+          {conversationHistory.filter(msg => msg.role === 'assistant').length > 0 ? (
+            conversationHistory.filter(msg => msg.role === 'assistant').slice(-1)[0].text
+          ) : (
+            <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+              💬 Latest AI interviewer message will appear here
+            </span>
+          )}
+        </div>
+        {conversationHistory.filter(msg => msg.role === 'assistant').length > 0 && (
+          <button
+            className="btn btn-secondary"
+            style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', flexShrink: 0 }}
+            onClick={() => {
+              const lastMessage = conversationHistory.filter(msg => msg.role === 'assistant').slice(-1)[0].text;
+              if (speakingMessageText === lastMessage) {
+                stopSpeaking();
+              } else {
+                speakText(lastMessage);
+              }
+            }}
+          >
+            {speakingMessageText === conversationHistory.filter(msg => msg.role === 'assistant').slice(-1)[0].text ? (
+              <Pause size={16} />
+            ) : (
+              <Play size={16} />
+            )}
+          </button>
+        )}
+      </div>
+
       {/* Two-Panel Layout */}
       <div 
         className="resizable-layout"
@@ -577,7 +601,7 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
         {/* Left Panel: Problem & Interviewer */}
         <div className="left-panel" style={{ width: `${leftPanelWidth}%` }}>
           <div className="problem-section">
-            <h3>Problem</h3>
+            <h3>{problem.title} <span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span></h3>
             <div className="problem-description">
               <pre>{problem.description}</pre>
             </div>
@@ -666,9 +690,19 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
                       <button
                         className="btn btn-secondary"
                         style={{ marginLeft: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                        onClick={() => speakText(msg.text)}
+                        onClick={() => {
+                          if (speakingMessageText === msg.text) {
+                            stopSpeaking();
+                          } else {
+                            speakText(msg.text);
+                          }
+                        }}
                       >
-                        🔊
+                        {speakingMessageText === msg.text ? (
+                          <Pause size={14} />
+                        ) : (
+                          <Play size={14} />
+                        )}
                       </button>
                     </div>
                     <div style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>{msg.text}</div>

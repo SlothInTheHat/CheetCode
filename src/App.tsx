@@ -3,7 +3,7 @@ import LandingPage, { type ProblemFilters } from './components/LandingPage';
 import InterviewPanel from './components/InterviewPanel';
 import { loadProblems, getDefaultProblem } from './data/problems';
 import type { Problem } from './types/index';
-import { Users, Home } from 'lucide-react';
+import { Users, Home, Settings } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -12,6 +12,8 @@ function App() {
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'v1' | 'v2'>('v1');
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
 
   const handleStartInterview = async (filters: ProblemFilters) => {
     setLoading(true);
@@ -82,29 +84,47 @@ function App() {
           <Users size={32} />
           <h1>AI Interview Coach</h1>
         </div>
-        <div className="problem-selector">
+        <div className="header-controls">
           <button className="btn-back" onClick={handleBackToLanding} title="Back to filters">
             <Home size={18} />
           </button>
-          <label htmlFor="problem-select">Problem:</label>
-          {error && <span style={{ color: '#ff6b6b', marginRight: '0.5rem' }}>⚠ {error}</span>}
-          <select
-            id="problem-select"
-            value={currentProblem?.id || ''}
-            onChange={(e) => handleProblemChange(e.target.value)}
+          <div className="mode-selector">
+            <label style={{ fontWeight: 'bold', marginRight: '0.75rem' }}>Mode:</label>
+            <button
+              className={`btn ${mode === 'v1' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setMode('v1')}
+              style={{ marginRight: '0.5rem' }}
+            >
+              Strict
+            </button>
+            <button
+              className={`btn ${mode === 'v2' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setMode('v2')}
+            >
+              Supportive
+            </button>
+          </div>
+          <button
+            className={`btn ${showVoiceSettings ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setShowVoiceSettings(!showVoiceSettings)}
+            title="Voice Settings"
+            style={{ marginLeft: '1rem' }}
           >
-            {problems.map((problem) => (
-              <option key={problem.id} value={problem.id}>
-                {problem.title} ({problem.difficulty})
-              </option>
-            ))}
-          </select>
+            <Settings size={18} />
+            Voice
+          </button>
         </div>
       </header>
 
       <main className="app-main">
         {currentProblem && (
-          <InterviewPanel problem={currentProblem} onProblemChange={handleProblemChange} />
+          <InterviewPanel 
+            problem={currentProblem} 
+            onProblemChange={handleProblemChange}
+            mode={mode}
+            showVoiceSettings={showVoiceSettings}
+            setShowVoiceSettings={setShowVoiceSettings}
+          />
         )}
       </main>
 
