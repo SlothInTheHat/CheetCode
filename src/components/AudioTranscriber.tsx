@@ -245,20 +245,6 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
       console.log('[AudioTranscriber] Auto-sending to AI:', text.substring(0, 50));
       onSpeechFinalized(text);
     }
-
-    // Send to backend API for transcript storage
-    try {
-      console.log('[AudioTranscriber] Sending to backend:', { sessionId, timestamp, text: text.substring(0, 50) });
-      const response = await axios.post('/api/realtime_audio_chunk', {
-        sessionId,
-        timestamp,
-        text,
-        isFinal: true,
-      });
-      console.log('[AudioTranscriber] Backend response:', response.data);
-    } catch (err) {
-      console.error('[AudioTranscriber] Failed to send to backend:', err);
-    }
   };
 
   // Cleanup on unmount
