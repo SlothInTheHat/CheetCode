@@ -3,6 +3,18 @@ import axios from 'axios';
 
 const KEYWORDS_AI_URL = 'https://api.keywordsai.co/api/chat/completions';
 
+interface TelemetryData {
+  timestamp: number;
+  type: 'feedback';
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  latency: number;
+  success: boolean;
+  error?: string;
+}
+
 const getFeedbackPrompt = (
   problemTitle: string,
   problemDescription: string,
@@ -67,15 +79,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const startTime = Date.now();
     const { problemTitle, problemDescription, code, hintsUsed, executionCount } = req.body;
 
     if (!problemTitle || !problemDescription || !code) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields: problemTitle, problemDescription, code' });
     }
 
     const apiKey = process.env.VITE_KEYWORDS_AI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'Keywords AI API key not configured' });
+      console.error('CRITICAL: Keywords AI API key not configured');
+      return res.status(500).json({ 
+        error: 'Keywords AI API key not configured. Please set VITE_KEYWORDS_AI_API_KEY environment variable.' 
+      });
     }
 
     const prompt = getFeedbackPrompt(
@@ -88,6 +104,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Call Keywords AI
     // Using stronger model (gpt-4) for final evaluation
+    console.log('[end-session] Calling Keywords AI with model=gpt-4 for feedback generation');
+    
     const response = await axios.post(
       KEYWORDS_AI_URL,
       {
@@ -107,23 +125,78 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
+        timeout: 30000,
       }
     );
 
+    const latency = Date.now() - startTime;
     const feedbackText = response.data.choices[0]?.message?.content || '{}';
     const feedback = JSON.parse(feedbackText);
+    const promptTokens = response.data.usage?.prompt_tokens || 0;
+    const completionTokens = response.data.usage?.completion_tokens || 0;
+    const totalTokens = promptTokens + completionTokens;
 
-    return res.status(200).json(feedback);
+    // Log telemetry
+    const telemetry: TelemetryData = {
+      timestamp: Date.now(),
+      type: 'feedback',
+      model: 'gpt-4',
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      latency,
+      success: true,
+    };
+
+    console.log(`[end-session] Success - Tokens: ${totalTokens}, Latency: ${latency}ms`, telemetry);
+
+    return res.status(200).json({
+      ...feedback,
+      telemetry,
+    });
   } catch (error: any) {
-    console.error('Feedback generation error:', error.response?.data || error);
+    const latency = Date.now() - (error.startTime || Date.now());
+    console.error('[end-session] Error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      latency,
+    });
 
-    // Return a fallback feedback if AI fails
+    const telemetry: TelemetryData = {
+      timestamp: Date.now(),
+      type: 'feedback',
+      model: 'gpt-4',
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      latency,
+      success: false,
+      error: error.message,
+    };
+
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        error: 'Keywords AI authentication failed. Check your API key.',
+        telemetry,
+      });
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        error: 'Keywords AI request timed out',
+        telemetry,
+      });
+    }
+
+    // Return fallback feedback on error but include telemetry
     return res.status(200).json({
       strengths: ['Attempted the problem', 'Used proper Python syntax'],
-      weaknesses: ['Could not complete full evaluation'],
+      weaknesses: ['Could not complete full evaluation - Keywords AI service temporarily unavailable'],
       suggestedTopics: ['Data Structures', 'Algorithms', 'Time Complexity'],
       overallScore: 5,
       detailedFeedback: 'Session completed. Keep practicing coding problems to improve your skills.',
+      telemetry,
     });
   }
 }

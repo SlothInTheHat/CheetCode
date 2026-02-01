@@ -3,6 +3,19 @@ import axios from 'axios';
 
 const KEYWORDS_AI_URL = 'https://api.keywordsai.co/api/chat/completions';
 
+interface TelemetryData {
+  timestamp: number;
+  type: 'hint';
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  latency: number;
+  mode: 'v1' | 'v2';
+  success: boolean;
+  error?: string;
+}
+
 // Import prompt templates (we'll inline them for serverless)
 const getInterviewerPromptV1 = (
   problemTitle: string,
@@ -103,15 +116,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const startTime = Date.now();
     const { problemTitle, problemDescription, code, hintsUsed, mode = 'v1' } = req.body;
 
     if (!problemTitle || !problemDescription || !code) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields: problemTitle, problemDescription, code' });
     }
 
     const apiKey = process.env.VITE_KEYWORDS_AI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'Keywords AI API key not configured' });
+      console.error('CRITICAL: Keywords AI API key not configured');
+      return res.status(500).json({ 
+        error: 'Keywords AI API key not configured. Please set VITE_KEYWORDS_AI_API_KEY environment variable.' 
+      });
     }
 
     // Select prompt based on mode
@@ -122,6 +139,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Call Keywords AI
     // Using cheaper model (gpt-3.5-turbo) for hints
+    console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=gpt-3.5-turbo`);
+    
     const response = await axios.post(
       KEYWORDS_AI_URL,
       {
@@ -140,19 +159,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
+        timeout: 30000,
       }
     );
 
+    const latency = Date.now() - startTime;
     const message = response.data.choices[0]?.message?.content || 'No response from interviewer';
+    const promptTokens = response.data.usage?.prompt_tokens || 0;
+    const completionTokens = response.data.usage?.completion_tokens || 0;
+    const totalTokens = promptTokens + completionTokens;
+
+    // Log telemetry
+    const telemetry: TelemetryData = {
+      timestamp: Date.now(),
+      type: 'hint',
+      model: 'gpt-3.5-turbo',
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      latency,
+      mode: mode as 'v1' | 'v2',
+      success: true,
+    };
+
+    console.log(`[ask-interviewer] Success - Tokens: ${totalTokens}, Latency: ${latency}ms`, telemetry);
 
     return res.status(200).json({
       message,
       type: 'hint',
+      telemetry,
     });
   } catch (error: any) {
-    console.error('Keywords AI error:', error.response?.data || error);
+    const latency = Date.now() - (error.startTime || Date.now());
+    console.error('[ask-interviewer] Error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      latency,
+    });
+
+    const telemetry: TelemetryData = {
+      timestamp: Date.now(),
+      type: 'hint',
+      model: 'gpt-3.5-turbo',
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      latency,
+      mode: req.body.mode || 'v1',
+      success: false,
+      error: error.message,
+    };
+
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        error: 'Keywords AI authentication failed. Check your API key.',
+        telemetry,
+      });
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        error: 'Keywords AI request timed out',
+        telemetry,
+      });
+    }
+
     return res.status(500).json({
       error: error.message || 'Failed to get interviewer response',
+      telemetry,
     });
   }
-}

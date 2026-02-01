@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "import:csv": "node scripts/importCsv.js"
+    "import:csv": "node scripts/importCsv.js",
+    "eval": "ts-node scripts/runEvals.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
