@@ -261,6 +261,10 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
 
   const handleStartRecording = () => {
     shouldStopRecordingRef.current = false;
+    // Clear previous session data when starting new recording
+    setCollectedTranscript('');
+    setTranscriptEntries([]);
+    
     if (useBrowserAPI || !SpeechRecognition) {
       startBrowserRecognition();
     } else {
@@ -284,9 +288,8 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
       console.log('[AudioTranscriber] No transcript to send');
     }
 
-    // Clear collected transcript and entries for next session
+    // Clear collected transcript for next session (keep entries visible until new recording starts)
     setCollectedTranscript('');
-    setTranscriptEntries([]);
 
     if (useBrowserAPI || recognitionRef.current) {
       stopBrowserRecognition();
