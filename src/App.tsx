@@ -1,15 +1,37 @@
 import { useState, useEffect } from 'react';
 import InterviewPanel from './components/InterviewPanel';
+import FeedbackPanel from './components/FeedbackPanel';
 import { loadProblems, getDefaultProblem } from './data/problems';
-import type { Problem } from './types/index';
+import type { Problem, SessionFeedback } from './types/index';
 import { Brain } from 'lucide-react';
 import './App.css';
+
+const DEMO_FEEDBACK: SessionFeedback = {
+  overallScore: 8,
+  detailedFeedback: "Excellent work on solving the Two Sum problem! You demonstrated strong problem-solving skills, understood the requirements well, and implemented an efficient solution with good time complexity. Your code was clean and readable. Consider using more descriptive variable names and adding comments for complex logic in future interviews.",
+  strengths: [
+    'Strong understanding of hash map data structures',
+    'Efficient O(n) time complexity solution',
+    'Clean and readable code with proper naming conventions',
+    'Proactive testing with multiple test cases'
+  ],
+  weaknesses: [
+    'Could have explained the edge cases more thoroughly',
+    'Took a moment to decide between brute force and optimal approach'
+  ],
+  suggestedTopics: [
+    'Two pointers technique for array problems',
+    'Dynamic programming fundamentals',
+    'Bit manipulation problems'
+  ]
+};
 
 function App() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDemo, setShowDemo] = useState(false);
 
   // Load problems from Supabase on mount
   useEffect(() => {
@@ -53,6 +75,43 @@ function App() {
     }
   };
 
+  const handleDemoClick = () => {
+    setShowDemo(!showDemo);
+  };
+
+  if (showDemo) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <div className="logo">
+            <Brain size={32} />
+            <h1>AI Interview Coach</h1>
+          </div>
+          <button
+            onClick={handleDemoClick}
+            style={{
+              padding: '0.5rem 1rem',
+              background: '#ff6b6b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+            }}
+          >
+            Exit Demo
+          </button>
+        </header>
+        <main className="app-main">
+          <FeedbackPanel
+            feedback={DEMO_FEEDBACK}
+            onNewInterview={handleDemoClick}
+          />
+        </main>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="app">
@@ -90,6 +149,21 @@ function App() {
               </option>
             ))}
           </select>
+          <button
+            onClick={handleDemoClick}
+            style={{
+              marginLeft: '1rem',
+              padding: '0.5rem 1rem',
+              background: '#4c6ef5',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+            }}
+          >
+            🎤 Test Voice Demo
+          </button>
         </div>
       </header>
 
