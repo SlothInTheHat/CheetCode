@@ -157,7 +157,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
         ? getInterviewerPromptV2(problemTitle, problemDescription, code, hintsUsed)
         : getInterviewerPromptV1(problemTitle, problemDescription, code, hintsUsed);
 
-    console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=gpt-3.5-turbo`);
+    console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=claude-3-5-sonnet-20241022`);
     console.log(`[ask-interviewer] API Key: ${apiKey.slice(0, 10)}... (redacted)`);
 
     let response;
@@ -169,7 +169,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
         response = await axios.post(
           KEYWORDS_AI_API_URL,
           {
-            model: 'gpt-3.5-turbo',
+            model: 'claude-3-5-sonnet-20241022',
             messages: [
               {
                 role: 'user',
@@ -209,7 +209,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
     const telemetry = {
       timestamp: Date.now(),
       type: 'hint',
-      model: 'gpt-3.5-turbo',
+      model: 'claude-3-5-sonnet-20241022',
       promptTokens,
       completionTokens,
       totalTokens,
@@ -229,6 +229,11 @@ app.post('/api/ask-interviewer', async (req, res) => {
     });
   } catch (error) {
     console.error('[ask-interviewer] Error:', error.message);
+    console.error('[ask-interviewer] Error details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      headers: error.response?.headers
+    });
 
     if (error.response?.status === 401) {
       return res.status(401).json({
@@ -237,7 +242,8 @@ app.post('/api/ask-interviewer', async (req, res) => {
     }
 
     return res.status(500).json({
-      error: error.message || 'Failed to get interviewer response',
+      error: error.response?.data?.error || error.message || 'Failed to get interviewer response',
+      details: error.response?.data
     });
   }
 });
@@ -298,7 +304,7 @@ Be honest but constructive. Focus on specific, actionable feedback.
 
 Return ONLY the JSON object, no other text:`;
 
-    console.log('[end-session] Calling Keywords AI with model=gpt-3.5-turbo');
+    console.log('[end-session] Calling Keywords AI with model=claude-3-5-sonnet-20241022');
 
     let response;
     let retries = 0;
@@ -309,7 +315,7 @@ Return ONLY the JSON object, no other text:`;
         response = await axios.post(
           KEYWORDS_AI_API_URL,
           {
-            model: 'gpt-3.5-turbo',
+            model: 'claude-3-5-sonnet-20241022',
             messages: [
               {
                 role: 'user',
@@ -364,7 +370,7 @@ Return ONLY the JSON object, no other text:`;
     const telemetry = {
       timestamp: Date.now(),
       type: 'feedback',
-      model: 'gpt-4',
+      model: 'claude-3-5-sonnet-20241022',
       promptTokens,
       completionTokens,
       totalTokens,
