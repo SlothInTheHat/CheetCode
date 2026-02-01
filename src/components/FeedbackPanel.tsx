@@ -1,12 +1,13 @@
 import type { SessionFeedback } from '../types/index';
-import { CheckCircle2, XCircle, Lightbulb, TrendingUp } from 'lucide-react';
+import { CheckCircle2, XCircle, Lightbulb, TrendingUp, BarChart3 } from 'lucide-react';
 
 interface FeedbackPanelProps {
   feedback: SessionFeedback;
   onNewInterview: () => void;
+  onViewTelemetry?: () => void;
 }
 
-export default function FeedbackPanel({ feedback, onNewInterview }: FeedbackPanelProps) {
+export default function FeedbackPanel({ feedback, onNewInterview, onViewTelemetry }: FeedbackPanelProps) {
   return (
     <div className="feedback-panel">
       <h2 className="feedback-title">Interview Complete!</h2>
@@ -62,6 +63,13 @@ export default function FeedbackPanel({ feedback, onNewInterview }: FeedbackPane
         <TrendingUp size={18} />
         Start New Interview
       </button>
+
+      {onViewTelemetry && (
+        <button className="btn btn-secondary" onClick={onViewTelemetry} style={{ marginLeft: '0.5rem' }}>
+          <BarChart3 size={18} />
+          View Telemetry
+        </button>
+      )}
     </div>
   );
 }

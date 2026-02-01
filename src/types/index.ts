@@ -30,6 +30,17 @@ export interface SessionFeedback {
   suggestedTopics: string[];
   overallScore?: number;
   detailedFeedback: string;
+  telemetry?: {
+    timestamp: number;
+    type: 'feedback';
+    model: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    latency: number;
+    success: boolean;
+    error?: string;
+  };
 }
 
 export interface InterviewSession {
