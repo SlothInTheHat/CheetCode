@@ -28,6 +28,7 @@ interface InterviewPanelProps {
 export default function InterviewPanel({ problem, onProblemChange: _onProblemChange }: InterviewPanelProps) {
   // Generate unique session ID for transcript tracking
   const [sessionId] = useState(() => crypto.randomUUID());
+  const [leftPanelWidth, setLeftPanelWidth] = useState(35); // percentage
 
   const [code, setCode] = useState(problem.starterCode);
   const [output, setOutput] = useState('');
@@ -49,15 +50,33 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTranscript, setRecordingTranscript] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [autoSpeak, setAutoSpeak] = useState(true);
   const [voiceRate, setVoiceRate] = useState(1.0);
   const [voicePitch, setVoicePitch] = useState(1.0);
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
-  const [voiceConversationMode, setVoiceConversationMode] = useState(true);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', text: string}>>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleCodeChange = (value: string | undefined) => {
     setCode(value || '');
+  };
+
+  const handleMouseDown = () => {
+    setIsDragging(true);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+
+    const container = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const newWidth = ((e.clientX - container.left) / container.width) * 100;
+
+    if (newWidth > 20 && newWidth < 60) {
+      setLeftPanelWidth(newWidth);
+    }
   };
 
   const speakText = (text: string) => {
@@ -106,52 +125,48 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
     setConversationHistory(prev => [...prev, { role: 'user', text: spokenText }]);
 
     // Automatically ask the interviewer with the spoken question
-    if (voiceConversationMode) {
-      setIsAskingInterviewer(true);
-      setInterviewerMessage('Thinking...');
+    setIsAskingInterviewer(true);
+    setInterviewerMessage('Thinking...');
 
-      try {
-        console.log('[Voice] Sending to AI:', {
-          problemTitle: problem.title,
-          userQuestion: spokenText,
-          mode,
-        });
+    try {
+      console.log('[Voice] Sending to AI:', {
+        problemTitle: problem.title,
+        userQuestion: spokenText,
+        mode,
+      });
 
-        const response = await axios.post('/api/ask-interviewer', {
-          problemTitle: problem.title,
-          problemDescription: problem.description,
-          code,
-          hintsUsed,
-          mode,
-          userQuestion: spokenText, // Include what the user asked
-        });
+      const response = await axios.post('/api/ask-interviewer', {
+        problemTitle: problem.title,
+        problemDescription: problem.description,
+        code,
+        hintsUsed,
+        mode,
+        userQuestion: spokenText, // Include what the user asked
+      });
 
-        const message = response.data.message;
-        setInterviewerMessage(message);
-        setHintsUsed((prev) => prev + 1);
+      const message = response.data.message;
+      setInterviewerMessage(message);
+      setHintsUsed((prev) => prev + 1);
 
-        // Add to conversation history
-        setConversationHistory(prev => [...prev, { role: 'assistant', text: message }]);
+      // Add to conversation history
+      setConversationHistory(prev => [...prev, { role: 'assistant', text: message }]);
 
-        // Auto-speak the response if enabled
-        if (autoSpeak) {
-          speakText(message);
-        }
+      // Auto-speak the response
+      speakText(message);
 
-        // Track telemetry
-        if (response.data.telemetry) {
-          setSessionTelemetry((prev) => ({
-            ...prev,
-            hints: [...prev.hints, response.data.telemetry],
-          }));
-        }
-      } catch (error: any) {
-        const errorMessage = 'Failed to get interviewer response. Please try again.';
-        setInterviewerMessage(errorMessage);
-        console.error('[Voice] Error:', error.response?.data || error.message);
-      } finally {
-        setIsAskingInterviewer(false);
+      // Track telemetry
+      if (response.data.telemetry) {
+        setSessionTelemetry((prev) => ({
+          ...prev,
+          hints: [...prev.hints, response.data.telemetry],
+        }));
       }
+    } catch (error: any) {
+      const errorMessage = 'Failed to get interviewer response. Please try again.';
+      setInterviewerMessage(errorMessage);
+      console.error('[Voice] Error:', error.response?.data || error.message);
+    } finally {
+      setIsAskingInterviewer(false);
     }
   };
 
@@ -217,10 +232,8 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
       setInterviewerMessage(message);
       setHintsUsed((prev) => prev + 1);
 
-      // Auto-speak the response if enabled
-      if (autoSpeak) {
-        speakText(message);
-      }
+      // Auto-speak the response
+      speakText(message);
 
       // Track telemetry
       if (response.data.telemetry) {
@@ -386,170 +399,153 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
             {problem.difficulty}
           </span>
         </div>
-        <div className="session-stats">
-          <span className="stat">Hints: {hintsUsed}</span>
-          <span className="stat">Runs: {executionCount}</span>
-        </div>
-      </div>
-
-      <div className="interview-header" style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div>
-          <label style={{ fontWeight: 'bold', marginRight: '0.5rem' }}>Interviewer Mode:</label>
-          <button
-            className={`btn ${mode === 'v1' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setMode('v1')}
-            style={{ marginRight: '0.5rem' }}
-          >
-            v1 (Strict)
-          </button>
-          <button
-            className={`btn ${mode === 'v2' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setMode('v2')}
-          >
-            v2 (Supportive)
-          </button>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={autoSpeak}
-              onChange={(e) => setAutoSpeak(e.target.checked)}
-            />
-            <span>🔊 Auto-speak responses</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginLeft: '1rem' }}>
-            <input
-              type="checkbox"
-              checked={voiceConversationMode}
-              onChange={(e) => setVoiceConversationMode(e.target.checked)}
-            />
-            <span>💬 Voice conversation (auto-respond when you speak)</span>
-          </label>
-        </div>
-      </div>
-
-      <div className="problem-description">
-        <pre>{problem.description}</pre>
-      </div>
-
-      {/* Audio Transcription Section */}
-      <div className="audio-section">
-        <AudioTranscriber 
-          sessionId={sessionId} 
-          onSpeechFinalized={handleUserSpeech}
-          autoSendToAI={voiceConversationMode}
-        />
-      </div>
-
-      <div className="interview-workspace">
-        <div className="editor-section">
-          <div className="section-header">
-            <h3>Your Solution</h3>
-            <div className="editor-actions">
-              <button
-                className="btn btn-secondary"
-                onClick={handleRunCode}
-                disabled={isRunning}
-              >
-                {isRunning ? (
-                  <>
-                    <Loader2 className="spinning" size={18} />
-                    Running...
-                  </>
-                ) : (
-                  <>
-                    <Play size={18} />
-                    Run Code
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-          <CodeEditor code={code} onChange={handleCodeChange} />
-        </div>
-
-        <div className="output-section">
-          <div className="section-header">
-            <Terminal size={18} />
-            <h3>Output</h3>
-          </div>
-          <div className="output-content">
-            <pre>{output || 'Click "Run Code" to see output...'}</pre>
-          </div>
-        </div>
-      </div>
-
-      {interviewerMessage && (
-        <div className="interviewer-message">
-          <div className="message-header">
-            <HelpCircle size={18} />
-            <span>Interviewer</span>
+        <div className="header-controls">
+          <div className="mode-selector">
+            <label style={{ fontWeight: 'bold', marginRight: '0.75rem' }}>Mode:</label>
             <button
-              className="btn btn-secondary"
-              style={{ marginLeft: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-              onClick={() => isSpeaking ? stopSpeaking() : speakText(interviewerMessage)}
+              className={`btn ${mode === 'v1' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setMode('v1')}
+              style={{ marginRight: '0.5rem' }}
             >
-              {isSpeaking ? '⏸️ Stop' : '🔊 Speak'}
+              Strict
+            </button>
+            <button
+              className={`btn ${mode === 'v2' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setMode('v2')}
+            >
+              Supportive
             </button>
           </div>
-          <p>{interviewerMessage}</p>
         </div>
-      )}
+      </div>
 
-      {/* Audio Recording Section */}
-      {isRecording && (
-        <div className="recording-section">
-          <div className="recording-header">
-            <div className="recording-indicator">
-              <span className="recording-dot"></span>
-              Recording...
+      {/* Two-Panel Layout */}
+      <div 
+        className="resizable-layout"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* Left Panel: Problem & Interviewer */}
+        <div className="left-panel" style={{ width: `${leftPanelWidth}%` }}>
+          <div className="problem-section">
+            <h3>Problem</h3>
+            <div className="problem-description">
+              <pre>{problem.description}</pre>
             </div>
-            <button
-              className="btn btn-secondary"
-              onClick={handleStopRecording}
-            >
-              <MicOff size={18} />
-              Stop Recording
-            </button>
           </div>
-          <div className="recording-transcript">
-            <h4>Live Transcription:</h4>
-            <pre>{recordingTranscript || 'Listening...'}</pre>
-          </div>
-        </div>
-      )}
 
-      <div className="interview-actions">
-        {!isRecording && (
-          <button
-            className="btn btn-secondary"
-            onClick={handleStartRecording}
-          >
-            <Mic size={18} />
-            Record Audio
-          </button>
-        )}
-
-        <button
-          className="btn btn-hint"
-          onClick={handleAskInterviewer}
-          disabled={isAskingInterviewer}
-        >
-          {isAskingInterviewer ? (
-            <>
-              <Loader2 className="spinning" size={18} />
-              Asking...
-            </>
-          ) : (
-            <>
-              <HelpCircle size={18} />
-              Ask Interviewer
-            </>
+          {interviewerMessage && (
+            <div className="interviewer-message">
+              <div className="message-header">
+                <HelpCircle size={18} />
+                <span>Interviewer</span>
+                <button
+                  className="btn btn-secondary"
+                  style={{ marginLeft: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                  onClick={() => isSpeaking ? stopSpeaking() : speakText(interviewerMessage)}
+                >
+                  {isSpeaking ? '⏸️ Stop' : '🔊 Speak'}
+                </button>
+              </div>
+              <p>{interviewerMessage}</p>
+            </div>
           )}
-        </button>
+        </div>
 
+        {/* Resize Handle */}
+        <div 
+          className="resize-handle"
+          onMouseDown={handleMouseDown}
+          style={{ cursor: isDragging ? 'col-resize' : 'col-resize' }}
+        />
+
+        {/* Right Panel: Code Editor & Output */}
+        <div className="right-panel" style={{ width: `${100 - leftPanelWidth}%` }}>
+          <div className="code-section">
+            <div className="section-header">
+              <h3>Your Solution</h3>
+              <div className="editor-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleRunCode}
+                  disabled={isRunning}
+                >
+                  {isRunning ? (
+                    <>
+                      <Loader2 className="spinning" size={18} />
+                      Running...
+                    </>
+                  ) : (
+                    <>
+                      <Play size={18} />
+                      Run Code
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            <CodeEditor code={code} onChange={handleCodeChange} />
+            
+            <div className="terminal-output">
+              <div className="terminal-header">
+                <Terminal size={16} />
+                <span>Output</span>
+              </div>
+              <pre className="terminal-content">{output || 'Click "Run Code" to see output...'}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Audio Section */}
+      <div className="audio-interview-section">
+        <div className="audio-controls-container">
+          {/* Left: Human Transcript */}
+          <div className="audio-left-panel">
+            <AudioTranscriber 
+              sessionId={sessionId} 
+              onSpeechFinalized={handleUserSpeech}
+              autoSendToAI={true}
+            />
+          </div>
+          
+          {/* Right: AI Response */}
+          <div className="audio-right-panel">
+            {interviewerMessage && (
+              <div className="interviewer-message">
+                <div className="message-header">
+                  <HelpCircle size={18} />
+                  <span>AI Response</span>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ marginLeft: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                    onClick={() => isSpeaking ? stopSpeaking() : speakText(interviewerMessage)}
+                  >
+                    {isSpeaking ? '⏸️ Stop' : '🔊 Speak'}
+                  </button>
+                </div>
+                <p>{interviewerMessage}</p>
+              </div>
+            )}
+            {!interviewerMessage && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%', 
+                color: 'var(--text-secondary)',
+                fontStyle: 'italic'
+              }}>
+                💬 AI response will appear here
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="interview-actions">
         <button
           className="btn btn-primary"
           onClick={handleEndSession}
@@ -566,15 +562,6 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
               End Interview
             </>
           )}
-        </button>
-
-        <button
-          className="btn btn-secondary"
-          onClick={() => setShowTelemetry(true)}
-          disabled={sessionTelemetry.hints.length === 0 && sessionTelemetry.executions.length === 0}
-        >
-          <BarChart3 size={18} />
-          View Telemetry
         </button>
       </div>
     </div>

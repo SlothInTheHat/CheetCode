@@ -68,10 +68,12 @@
 
 .app-main {
   flex: 1;
-  padding: 2rem;
+  padding: 1rem 3rem;
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-footer {
@@ -96,13 +98,31 @@
 .interview-panel {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.5rem;
+  height: 100%;
+  flex: 1;
 }
 
 .interview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 1rem 1.5rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.header-controls {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.mode-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .problem-title {
@@ -146,10 +166,10 @@
 }
 
 .problem-description {
-  background: var(--bg-secondary);
-  padding: 1.5rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  border: none;
 }
 
 .problem-description pre {
@@ -157,6 +177,12 @@
   white-space: pre-wrap;
   font-family: inherit;
   line-height: 1.6;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.audio-section {
+  flex-shrink: 0;
 }
 
 .interview-workspace {
@@ -169,6 +195,67 @@
   .interview-workspace {
     grid-template-columns: 1fr;
   }
+}
+
+/* Resizable Layout */
+.resizable-layout {
+  display: flex;
+  gap: 0;
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  flex: 1;
+}
+
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 300px;
+}
+
+.left-panel h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.problem-section {
+  flex-shrink: 0;
+}
+
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  min-width: 300px;
+}
+
+.resize-handle {
+  width: 6px;
+  background: linear-gradient(90deg, var(--border) 0%, var(--primary) 50%, var(--border) 100%);
+  cursor: col-resize;
+  transition: background 0.2s;
+}
+
+.resize-handle:hover {
+  background: linear-gradient(90deg, var(--border) 0%, var(--primary-hover) 50%, var(--border) 100%);
+}
+
+.code-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .editor-section,
@@ -187,6 +274,7 @@
   background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border);
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .section-header h3 {
@@ -201,7 +289,44 @@
 }
 
 .code-editor-container {
-  min-height: 500px;
+  flex: 1;
+  overflow: auto;
+}
+
+/* Terminal Output Styling */
+.terminal-output {
+  display: flex;
+  flex-direction: column;
+  background: #0d0d0d;
+  border-top: 1px solid var(--border);
+  height: 150px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #1a1a1a;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.terminal-content {
+  flex: 1;
+  padding: 1rem;
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto;
+  color: #00ff00;
 }
 
 .output-content {
@@ -219,11 +344,53 @@
   white-space: pre-wrap;
 }
 
+/* Audio Interview Section */
+.audio-interview-section {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  padding: 1rem;
+  margin: 0;
+  min-height: 400px;
+  max-height: 600px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.audio-controls-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  height: 100%;
+}
+
+.audio-left-panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+}
+
+.audio-right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+}
+
 .interviewer-message {
   background: rgba(100, 108, 255, 0.1);
   border: 1px solid rgba(100, 108, 255, 0.3);
   border-radius: 8px;
   padding: 1.25rem;
+  margin: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .message-header {
@@ -238,6 +405,8 @@
 .interviewer-message p {
   margin: 0;
   line-height: 1.6;
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* Recording Section */
@@ -310,8 +479,9 @@
   display: flex;
   gap: 1rem;
   justify-content: center;
-  padding-top: 1rem;
+  padding: 0.75rem 0 0 0;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 /* Buttons */
@@ -523,6 +693,9 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  height: 100%;
+  overflow: hidden;
+  padding: 1rem;
 }
 
 .transcriber-controls {
@@ -549,7 +722,7 @@
 }
 
 .transcript-display {
-  max-height: 300px;
+  flex: 1;
   overflow-y: auto;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
