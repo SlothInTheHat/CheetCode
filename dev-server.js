@@ -35,72 +35,8 @@ console.log(`📁 Transcripts directory ready at: ${TRANSCRIPTS_DIR}`);
 // Using Keywords AI (OpenAI-compatible API)
 const KEYWORDS_AI_API_URL = 'https://api.keywordsai.co/api/chat/completions';
 
-// Helper: Get interviewer prompt V1 (strict)
-const getInterviewerPromptV1 = (problemTitle, problemDescription, currentCode, hintsUsed, userQuestion = null) => {
-  const questionContext = userQuestion ? `\n\nCANDIDATE'S QUESTION:\n"${userQuestion}"\n` : '';
-  
-  return `You are a strict technical interviewer at a top tech company conducting a coding interview.
-
-PROBLEM:
-${problemTitle}
-${problemDescription}
-
-CANDIDATE'S CURRENT CODE:
-\`\`\`python
-${currentCode}
-\`\`\`${questionContext}
-
-CONTEXT:
-- This is hint request #${hintsUsed + 1}
-- You should NOT give away the solution
-- Ask probing questions about their approach
-- Point out potential issues without fixing them
-- Focus on time/space complexity, edge cases, and correctness
-${userQuestion ? '- Respond to their specific question while maintaining interview standards' : ''}
-
-YOUR RESPONSE SHOULD:
-1. Be brief (2-3 sentences max)
-2. Either ask a clarifying question about their approach OR give a subtle hint
-3. Sound like a real interviewer (professional but slightly challenging)
-4. NOT provide code snippets
-5. Encourage them to think through the problem
-${userQuestion ? '6. Address their question directly but don\'t give away the answer' : ''}
-
-Respond as the interviewer now:`;
-};
-
-// Helper: Get interviewer prompt V2 (supportive)
-const getInterviewerPromptV2 = (problemTitle, problemDescription, currentCode, hintsUsed, userQuestion = null) => {
-  const questionContext = userQuestion ? `\n\nCANDIDATE'S QUESTION:\n"${userQuestion}"\n` : '';
-  
-  return `You are a supportive technical interviewer helping a candidate succeed in their coding interview.
-
-PROBLEM:
-${problemTitle}
-${problemDescription}
-
-CANDIDATE'S CURRENT CODE:
-\`\`\`python
-${currentCode}
-\`\`\`${questionContext}
-
-CONTEXT:
-- This is hint request #${hintsUsed + 1}
-- The candidate is asking for help - be encouraging and helpful
-- Guide them toward the solution without giving it away entirely
-- Focus on building their confidence while improving their approach
-${userQuestion ? '- They\'ve asked a specific question - address it helpfully' : ''}
-
-YOUR RESPONSE SHOULD:
-1. Be encouraging and supportive (2-4 sentences)
-2. Acknowledge what they've done well so far
-3. Provide a helpful hint or ask a guiding question
-4. Can include small code hints if they're really stuck (but not the full solution)
-5. Sound like a friendly mentor
-${userQuestion ? '6. Directly answer their question in a helpful, educational way' : ''}
-
-Respond as the supportive interviewer now:`;
-};
+// Prompt ID from Keywords AI dashboard
+const INTERVIEWER_PROMPT_ID = '1565ee';
 
 // POST /api/run-code
 app.post('/api/run-code', async (req, res) => {
@@ -166,10 +102,22 @@ app.post('/api/ask-interviewer', async (req, res) => {
     // Debug logging
     console.log('[ask-interviewer] Received request body:', JSON.stringify(req.body, null, 2));
 
-    const { problemTitle, problemDescription, code = '', hintsUsed, mode = 'v1', userQuestion = null } = req.body;
+    const {
+      problemTitle,
+      problemDescription,
+      code = '',
+      hintsUsed = 0,
+      mode = 'v1',
+      userQuestion = '',
+      // New variables for managed prompt
+      interviewerPersonality,
+      difficultyLevel,
+      interviewStyle,
+      interviewMode,
+      currentQuestion = '',
+    } = req.body;
 
     // Only validate that problemTitle and problemDescription exist
-    // Code can be empty (user asking for initial hints)
     if (!problemTitle || !problemDescription) {
       console.log('[ask-interviewer] Validation failed:', {
         hasProblemTitle: !!problemTitle,
@@ -188,16 +136,27 @@ app.post('/api/ask-interviewer', async (req, res) => {
       });
     }
 
-    const prompt =
-      mode === 'v2'
-        ? getInterviewerPromptV2(problemTitle, problemDescription, code, hintsUsed, userQuestion)
-        : getInterviewerPromptV1(problemTitle, problemDescription, code, hintsUsed, userQuestion);
+    // Map old mode to new variables (for backward compatibility)
+    const personality = interviewerPersonality || (mode === 'v2' ? 'Supportive and encouraging mentor' : 'Professional and rigorous evaluator');
+    const difficulty = difficultyLevel || (mode === 'v2' ? 'Medium' : 'Hard');
+    const style = interviewStyle || (mode === 'v2' ? 'Collaborative and guiding' : 'Probing and challenging');
+    const intMode = interviewMode || (mode === 'v2' ? 'practice' : 'test');
 
-    console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=claude-sonnet-4-5-20250929`);
+    // Build problem statement
+    const problemStatement = `${problemTitle}\n\n${problemDescription}`;
+
+    // Build candidate transcript from user's spoken question
+    const transcript = userQuestion || (hintsUsed > 0
+      ? `The candidate has requested ${hintsUsed} hint(s) so far and is working on the problem.`
+      : 'The candidate is starting to work on the problem.');
+
+    // Build current question context
+    const question = currentQuestion || 'This is the beginning of the interview. Ask the candidate to explain their initial approach.';
+
+    console.log(`[ask-interviewer] Calling Keywords AI managed prompt id=${INTERVIEWER_PROMPT_ID}, mode=${intMode}`);
     if (userQuestion) {
       console.log(`[ask-interviewer] User question: "${userQuestion.substring(0, 100)}..."`);
     }
-    console.log(`[ask-interviewer] API Key: ${apiKey.slice(0, 10)}... (redacted)`);
 
     let response;
     let retries = 0;
@@ -208,15 +167,20 @@ app.post('/api/ask-interviewer', async (req, res) => {
         response = await axios.post(
           KEYWORDS_AI_API_URL,
           {
-            model: 'claude-sonnet-4-5-20250929',
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
+            prompt: {
+              prompt_id: INTERVIEWER_PROMPT_ID,
+              variables: {
+                interviewer_personality: personality,
+                difficulty_level: difficulty,
+                interview_style: style,
+                interview_mode: intMode,
+                problem_statement: problemStatement,
+                current_code: code || '# No code written yet',
+                candidate_transcript: transcript,
+                current_question: question,
               },
-            ],
-            max_tokens: 200,
-            temperature: 0.7,
+              override: true,
+            },
           },
           {
             headers: {
@@ -229,12 +193,12 @@ app.post('/api/ask-interviewer', async (req, res) => {
         break; // Success, exit retry loop
       } catch (error) {
         if (error.response?.status === 429 && retries < maxRetries - 1) {
-          const waitTime = Math.pow(2, retries) * 1000; // Exponential backoff: 1s, 2s
+          const waitTime = Math.pow(2, retries) * 1000;
           console.log(`[ask-interviewer] Rate limited (429), retrying in ${waitTime}ms...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           retries++;
         } else {
-          throw error; // Re-throw if not a 429 or out of retries
+          throw error;
         }
       }
     }
@@ -244,27 +208,27 @@ app.post('/api/ask-interviewer', async (req, res) => {
     const promptTokens = response.data.usage?.prompt_tokens || 0;
     const completionTokens = response.data.usage?.completion_tokens || 0;
     const totalTokens = promptTokens + completionTokens;
+    const modelUsed = response.data.model || 'unknown';
 
     const telemetry = {
       timestamp: Date.now(),
       type: 'hint',
-      model: 'claude-sonnet-4-5-20250929',
+      model: modelUsed,
       promptTokens,
       completionTokens,
       totalTokens,
       latency,
-      mode,
+      mode: intMode,
       success: true,
     };
 
-    console.log(
-      `[ask-interviewer] Success - Tokens: ${totalTokens}, Latency: ${latency}ms`
-    );
+    console.log(`[ask-interviewer] Success - Model: ${modelUsed}, Tokens: ${totalTokens}, Latency: ${latency}ms`);
 
     return res.status(200).json({
       message,
       type: 'hint',
       telemetry,
+      currentQuestion: message,
     });
   } catch (error) {
     console.error('[ask-interviewer] Error:', error.message);

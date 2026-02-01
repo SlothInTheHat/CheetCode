@@ -92,6 +92,8 @@ export default function InterviewPanel({
   const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', text: string}>>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [speakingMessageText, setSpeakingMessageText] = useState<string | null>(null);
+  // Track the current interviewer question for conversation context
+  const [currentQuestion, setCurrentQuestion] = useState<string>('');
 
   // Load Google voices
   useEffect(() => {
@@ -212,11 +214,17 @@ export default function InterviewPanel({
         hintsUsed,
         mode,
         userQuestion: spokenText, // Include what the user asked
+        currentQuestion, // Pass the last interviewer question for context
       });
 
       const message = response.data.message;
       setInterviewerMessage(message);
       setHintsUsed((prev) => prev + 1);
+
+      // Track the current question for conversation flow
+      if (response.data.currentQuestion) {
+        setCurrentQuestion(response.data.currentQuestion);
+      }
 
       // Add to conversation history
       setConversationHistory(prev => [...prev, { role: 'assistant', text: message }]);
@@ -288,6 +296,7 @@ export default function InterviewPanel({
         code,
         hintsUsed,
         mode,
+        currentQuestion,
       });
 
       const response = await axios.post('/api/ask-interviewer', {
@@ -296,11 +305,20 @@ export default function InterviewPanel({
         code,
         hintsUsed,
         mode,
+        currentQuestion, // Pass the last interviewer question for context
       });
 
       const message = response.data.message;
       setInterviewerMessage(message);
       setHintsUsed((prev) => prev + 1);
+
+      // Track the current question for conversation flow
+      if (response.data.currentQuestion) {
+        setCurrentQuestion(response.data.currentQuestion);
+      }
+
+      // Add to conversation history
+      setConversationHistory(prev => [...prev, { role: 'assistant', text: message }]);
 
       // Auto-speak the response
       speakText(message);
@@ -439,6 +457,8 @@ export default function InterviewPanel({
     setFeedback(null);
     setShowFeedback(false);
     setShowTelemetry(false);
+    setCurrentQuestion(''); // Reset conversation context
+    setConversationHistory([]); // Clear conversation history
     setSessionTelemetry({
       hints: [],
       feedback: null,

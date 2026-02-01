@@ -3,6 +3,9 @@ import axios from 'axios';
 
 const KEYWORDS_AI_URL = 'https://api.keywordsai.co/api/chat/completions';
 
+// Prompt ID from Keywords AI dashboard
+const INTERVIEWER_PROMPT_ID = '1565ee';
+
 interface TelemetryData {
   timestamp: number;
   type: 'hint';
@@ -11,90 +14,10 @@ interface TelemetryData {
   completionTokens: number;
   totalTokens: number;
   latency: number;
-  mode: 'v1' | 'v2';
+  mode: string;
   success: boolean;
   error?: string;
 }
-
-// Import prompt templates (we'll inline them for serverless)
-const getInterviewerPromptV1 = (
-  problemTitle: string,
-  problemDescription: string,
-  currentCode: string,
-  hintsUsed: number
-) => {
-  return `You are a strict technical interviewer at a top tech company conducting a coding interview.
-
-PROBLEM:
-${problemTitle}
-${problemDescription}
-
-CANDIDATE'S CURRENT CODE:
-\`\`\`python
-${currentCode}
-\`\`\`
-
-CONTEXT:
-- This is hint request #${hintsUsed + 1}
-- You should NOT give away the solution
-- Ask probing questions about their approach
-- Point out potential issues without fixing them
-- Focus on time/space complexity, edge cases, and correctness
-
-YOUR RESPONSE SHOULD:
-1. Be brief (2-3 sentences max)
-2. Either ask a clarifying question about their approach OR give a subtle hint
-3. Sound like a real interviewer (professional but slightly challenging)
-4. NOT provide code snippets
-5. Encourage them to think through the problem
-
-Examples of good responses:
-- "What's the time complexity of your current approach? Can you optimize it?"
-- "Have you considered what happens when the input is empty?"
-- "Walk me through your logic for handling duplicates."
-- "That's a good start. What data structure could help you achieve O(1) lookup?"
-
-Respond as the interviewer now:`;
-};
-
-const getInterviewerPromptV2 = (
-  problemTitle: string,
-  problemDescription: string,
-  currentCode: string,
-  hintsUsed: number
-) => {
-  return `You are a supportive technical interviewer helping a candidate succeed in their coding interview.
-
-PROBLEM:
-${problemTitle}
-${problemDescription}
-
-CANDIDATE'S CURRENT CODE:
-\`\`\`python
-${currentCode}
-\`\`\`
-
-CONTEXT:
-- This is hint request #${hintsUsed + 1}
-- The candidate is asking for help - be encouraging and helpful
-- Guide them toward the solution without giving it away entirely
-- Focus on building their confidence while improving their approach
-
-YOUR RESPONSE SHOULD:
-1. Be encouraging and supportive (2-4 sentences)
-2. Acknowledge what they've done well so far
-3. Provide a helpful hint or ask a guiding question
-4. Can include small code hints if they're really stuck (but not the full solution)
-5. Sound like a friendly mentor
-
-Examples of good responses:
-- "Good start! I like how you're thinking about this. For the next step, consider using a hash map to store values you've already seen. What would you store as the key and value?"
-- "You're on the right track with that loop. One optimization: instead of nested loops (O(n²)), could you use a data structure that gives faster lookups?"
-- "Nice! Your logic handles the basic case. Now think about edge cases - what if the array is empty or has only one element?"
-- "Great use of a stack! That's exactly the right data structure. Now, what should you do when you encounter a closing bracket?"
-
-Respond as the supportive interviewer now:`;
-};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
@@ -117,42 +40,70 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const startTime = Date.now();
-    const { problemTitle, problemDescription, code, hintsUsed, mode = 'v1' } = req.body;
+    const {
+      problemTitle,
+      problemDescription,
+      code,
+      hintsUsed,
+      mode = 'v1',
+      userQuestion = '',
+      // New variables for managed prompt
+      interviewerPersonality,
+      difficultyLevel,
+      interviewStyle,
+      interviewMode,
+      currentQuestion = '',
+    } = req.body;
 
-    if (!problemTitle || !problemDescription || !code) {
-      return res.status(400).json({ error: 'Missing required fields: problemTitle, problemDescription, code' });
+    if (!problemTitle || !problemDescription) {
+      return res.status(400).json({ error: 'Missing required fields: problemTitle, problemDescription' });
     }
 
     const apiKey = process.env.VITE_KEYWORDS_AI_API_KEY;
     if (!apiKey) {
       console.error('CRITICAL: Keywords AI API key not configured');
-      return res.status(500).json({ 
-        error: 'Keywords AI API key not configured. Please set VITE_KEYWORDS_AI_API_KEY environment variable.' 
+      return res.status(500).json({
+        error: 'Keywords AI API key not configured. Please set VITE_KEYWORDS_AI_API_KEY environment variable.'
       });
     }
 
-    // Select prompt based on mode
-    const prompt =
-      mode === 'v2'
-        ? getInterviewerPromptV2(problemTitle, problemDescription, code, hintsUsed)
-        : getInterviewerPromptV1(problemTitle, problemDescription, code, hintsUsed);
+    // Map old mode to new variables (for backward compatibility)
+    // If new variables aren't provided, derive them from mode
+    const personality = interviewerPersonality || (mode === 'v2' ? 'Supportive and encouraging mentor' : 'Professional and rigorous evaluator');
+    const difficulty = difficultyLevel || (mode === 'v2' ? 'Medium' : 'Hard');
+    const style = interviewStyle || (mode === 'v2' ? 'Collaborative and guiding' : 'Probing and challenging');
+    const intMode = interviewMode || (mode === 'v2' ? 'practice' : 'test');
 
-    // Call Keywords AI
-    // Using cheaper model (gpt-3.5-turbo) for hints
-    console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=gpt-3.5-turbo`);
-    
+    // Build problem statement
+    const problemStatement = `${problemTitle}\n\n${problemDescription}`;
+
+    // Build candidate transcript from user's spoken question or indicate they're working
+    const transcript = userQuestion || (hintsUsed > 0
+      ? `The candidate has requested ${hintsUsed} hint(s) so far and is working on the problem.`
+      : 'The candidate is starting to work on the problem.');
+
+    // Build current question context
+    const question = currentQuestion || 'This is the beginning of the interview. Ask the candidate to explain their initial approach.';
+
+    console.log(`[ask-interviewer] Calling Keywords AI managed prompt id=${INTERVIEWER_PROMPT_ID}, mode=${intMode}`);
+
     const response = await axios.post(
       KEYWORDS_AI_URL,
       {
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
+        prompt: {
+          prompt_id: INTERVIEWER_PROMPT_ID,
+          variables: {
+            interviewer_personality: personality,
+            difficulty_level: difficulty,
+            interview_style: style,
+            interview_mode: intMode,
+            problem_statement: problemStatement,
+            current_code: code || '# No code written yet',
+            candidate_transcript: transcript,
+            current_question: question,
           },
-        ],
-        max_tokens: 200,
-        temperature: 0.7,
+          override: true, // Use model/params configured in the prompt
+        },
       },
       {
         headers: {
@@ -168,26 +119,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const promptTokens = response.data.usage?.prompt_tokens || 0;
     const completionTokens = response.data.usage?.completion_tokens || 0;
     const totalTokens = promptTokens + completionTokens;
+    const modelUsed = response.data.model || 'unknown';
 
     // Log telemetry
     const telemetry: TelemetryData = {
       timestamp: Date.now(),
       type: 'hint',
-      model: 'gpt-3.5-turbo',
+      model: modelUsed,
       promptTokens,
       completionTokens,
       totalTokens,
       latency,
-      mode: mode as 'v1' | 'v2',
+      mode: intMode,
       success: true,
     };
 
-    console.log(`[ask-interviewer] Success - Tokens: ${totalTokens}, Latency: ${latency}ms`, telemetry);
+    console.log(`[ask-interviewer] Success - Model: ${modelUsed}, Tokens: ${totalTokens}, Latency: ${latency}ms`);
 
     return res.status(200).json({
       message,
       type: 'hint',
       telemetry,
+      // Return the current question for tracking conversation flow
+      currentQuestion: message,
     });
   } catch (error: any) {
     const latency = Date.now() - (error.startTime || Date.now());
@@ -201,12 +155,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const telemetry: TelemetryData = {
       timestamp: Date.now(),
       type: 'hint',
-      model: 'gpt-3.5-turbo',
+      model: 'unknown',
       promptTokens: 0,
       completionTokens: 0,
       totalTokens: 0,
       latency,
-      mode: req.body.mode || 'v1',
+      mode: req.body.interviewMode || req.body.mode || 'test',
       success: false,
       error: error.message,
     };
