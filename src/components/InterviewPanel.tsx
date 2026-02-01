@@ -561,20 +561,38 @@ export default function InterviewPanel({
       {showVoiceSettings && (
         <div
           style={{
-            background: '#f8f9fa',
-            border: '1px solid #dee2e6',
-            borderRadius: '0.5rem',
-            padding: '1rem',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '1.5rem',
             marginBottom: '1rem',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
           }}
         >
-          <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Voice Settings</h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 600 }}>Voice Settings</h4>
+            <button
+              onClick={() => setShowVoiceSettings(false)}
+              style={{
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-primary)',
+                padding: '0.4rem 0.8rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+              }}
+            >
+              Close
+            </button>
+          </div>
 
-          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
             {/* Voice Selection */}
-            <div style={{ flex: '1', minWidth: '200px' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>
-                Select Voice:
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Voice
               </label>
               <select
                 value={availableVoices.indexOf(selectedVoice || (getBestGoogleVoice() as SpeechSynthesisVoice))}
@@ -584,10 +602,13 @@ export default function InterviewPanel({
                 }}
                 style={{
                   width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid #ddd',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
                   fontSize: '0.9rem',
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
                 }}
               >
                 {availableVoices.map((voice, idx) => (
@@ -597,17 +618,17 @@ export default function InterviewPanel({
                 ))}
               </select>
               {availableVoices.length === 0 && (
-                <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
                   No Google voices available. Using default system voice.
                 </p>
               )}
             </div>
 
             {/* Speech Rate Slider */}
-            <div style={{ flex: '1', minWidth: '150px' }}>
+            <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 500 }}>Speed:</label>
-                <span style={{ fontSize: '0.85rem', color: '#666' }}>{voiceRate.toFixed(1)}x</span>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Speed</label>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600, background: 'var(--bg-tertiary)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>{voiceRate.toFixed(1)}x</span>
               </div>
               <input
                 type="range"
@@ -616,15 +637,15 @@ export default function InterviewPanel({
                 step="0.1"
                 value={voiceRate}
                 onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                style={{ width: '100%' }}
+                style={{ width: '100%', cursor: 'pointer' }}
               />
             </div>
 
             {/* Pitch Slider */}
-            <div style={{ flex: '1', minWidth: '150px' }}>
+            <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 500 }}>Pitch:</label>
-                <span style={{ fontSize: '0.85rem', color: '#666' }}>{voicePitch.toFixed(1)}</span>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Pitch</label>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600, background: 'var(--bg-tertiary)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>{voicePitch.toFixed(1)}</span>
               </div>
               <input
                 type="range"
@@ -633,7 +654,7 @@ export default function InterviewPanel({
                 step="0.1"
                 value={voicePitch}
                 onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                style={{ width: '100%' }}
+                style={{ width: '100%', cursor: 'pointer' }}
               />
             </div>
           </div>
@@ -644,24 +665,42 @@ export default function InterviewPanel({
       {showInterviewSettings && (
         <div
           style={{
-            background: '#f0f4ff',
-            border: '1px solid #c7d2fe',
-            borderRadius: '0.5rem',
-            padding: '1rem',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '1.5rem',
             marginBottom: '1rem',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h4 style={{ margin: 0 }}>Interview Settings</h4>
-            <span style={{ fontSize: '0.8rem', color: '#6366f1', fontWeight: 500 }}>
-              Mode: {mode === 'practice' ? 'Practice' : 'Test'}
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 600 }}>Interview Settings</h4>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600, background: 'var(--bg-tertiary)', padding: '0.3rem 0.7rem', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                {mode === 'practice' ? 'Practice' : 'Test'}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowInterviewSettings(false)}
+              style={{
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-primary)',
+                padding: '0.4rem 0.8rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+              }}
+            >
+              Close
+            </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
             {/* Interviewer Personality */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Interviewer Personality
               </label>
               <input
@@ -670,10 +709,12 @@ export default function InterviewPanel({
                 onChange={(e) => setInterviewSettings({ ...interviewSettings, interviewerPersonality: e.target.value })}
                 style={{
                   width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid #c7d2fe',
-                  fontSize: '0.85rem',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.9rem',
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
                 }}
                 placeholder="e.g., Supportive mentor"
               />
@@ -681,7 +722,7 @@ export default function InterviewPanel({
 
             {/* Difficulty Level */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Difficulty Level
               </label>
               <select
@@ -689,10 +730,13 @@ export default function InterviewPanel({
                 onChange={(e) => setInterviewSettings({ ...interviewSettings, difficultyLevel: e.target.value as 'Easy' | 'Medium' | 'Hard' })}
                 style={{
                   width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid #c7d2fe',
-                  fontSize: '0.85rem',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.9rem',
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
                 }}
               >
                 <option value="Easy">Easy</option>
@@ -703,7 +747,7 @@ export default function InterviewPanel({
 
             {/* Interview Style */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Interview Style
               </label>
               <input
@@ -712,10 +756,12 @@ export default function InterviewPanel({
                 onChange={(e) => setInterviewSettings({ ...interviewSettings, interviewStyle: e.target.value })}
                 style={{
                   width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid #c7d2fe',
-                  fontSize: '0.85rem',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.9rem',
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
                 }}
                 placeholder="e.g., Collaborative and guiding"
               />
@@ -723,7 +769,7 @@ export default function InterviewPanel({
 
             {/* Feedback Style */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Feedback Style
               </label>
               <select
@@ -731,10 +777,13 @@ export default function InterviewPanel({
                 onChange={(e) => setInterviewSettings({ ...interviewSettings, feedbackStyle: e.target.value as 'detailed' | 'brief' | 'actionable' })}
                 style={{
                   width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid #c7d2fe',
-                  fontSize: '0.85rem',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.9rem',
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
                 }}
               >
                 <option value="detailed">Detailed</option>
@@ -745,7 +794,7 @@ export default function InterviewPanel({
 
             {/* Scoring Strictness */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Scoring Strictness
               </label>
               <select
@@ -753,10 +802,13 @@ export default function InterviewPanel({
                 onChange={(e) => setInterviewSettings({ ...interviewSettings, scoringStrictness: e.target.value as 'lenient' | 'standard' | 'strict' })}
                 style={{
                   width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid #c7d2fe',
-                  fontSize: '0.85rem',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.9rem',
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
                 }}
               >
                 <option value="lenient">Lenient</option>
