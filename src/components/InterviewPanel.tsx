@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Play, HelpCircle, CheckSquare, Loader2, Terminal, BarChart3, Mic, MicOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, HelpCircle, CheckSquare, Loader2, Terminal, Settings } from 'lucide-react';
 import CodeEditor from './CodeEditor';
 import FeedbackPanel from './FeedbackPanel';
 import TelemetryPanel from './TelemetryPanel';
@@ -7,6 +7,32 @@ import AudioTranscriber from './AudioTranscriber';
 import type { Problem, SessionFeedback } from '../types/index';
 import type { TelemetryEntry } from '../lib/telemetry';
 import axios from 'axios';
+
+// Get Google voices (prefer female, English)
+const getGoogleVoices = () => {
+  const voices = window.speechSynthesis.getVoices();
+  return voices.filter((voice) =>
+    voice.lang.startsWith('en') && voice.name.includes('Google')
+  );
+};
+
+// Get the best Google voice
+const getBestGoogleVoice = (): SpeechSynthesisVoice | null => {
+  const googleVoices = getGoogleVoices();
+  if (googleVoices.length === 0) return null;
+
+  // Prefer female voices
+  const femaleVoice = googleVoices.find((voice) =>
+    voice.name.toLowerCase().includes('female')
+  );
+
+  return femaleVoice || googleVoices[0];
+};
+
+// Split text into sentences for better pacing
+const splitIntoSentences = (text: string): string[] => {
+  return text.match(/[^.!?]+[.!?]+/g)?.map(s => s.trim()) || [text];
+};
 
 interface InterviewPanelProps {
   problem: Problem;
@@ -51,10 +77,29 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
   const [recordingTranscript, setRecordingTranscript] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceRate, setVoiceRate] = useState(1.0);
-  const [voicePitch, setVoicePitch] = useState(1.0);
+  const [voicePitch, setVoicePitch] = useState(1.1);
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', text: string}>>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Load Google voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const googleVoices = getGoogleVoices();
+      setAvailableVoices(googleVoices);
+
+      if (!selectedVoice && googleVoices.length > 0) {
+        const bestVoice = getBestGoogleVoice();
+        setSelectedVoice(bestVoice);
+      }
+    };
+
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+  }, []);
 
   const handleCodeChange = (value: string | undefined) => {
     setCode(value || '');
@@ -82,35 +127,46 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
   const speakText = (text: string) => {
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
+    setIsSpeaking(true);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = voiceRate;
-    utterance.pitch = voicePitch;
-    utterance.volume = 1.0;
+    const sentences = splitIntoSentences(text);
+    let sentenceIndex = 0;
 
-    // Try to use a more natural voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Natural'));
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
+    const speakNextSentence = () => {
+      if (sentenceIndex >= sentences.length) {
+        setIsSpeaking(false);
+        return;
+      }
 
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      console.log('[TTS] Started speaking');
+      const utterance = new SpeechSynthesisUtterance(sentences[sentenceIndex]);
+      utterance.rate = voiceRate;
+      utterance.pitch = voicePitch;
+      utterance.volume = 1.0;
+      utterance.lang = 'en-US';
+
+      // Use selected Google voice or find best available
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      } else {
+        const bestVoice = getBestGoogleVoice();
+        if (bestVoice) {
+          utterance.voice = bestVoice;
+        }
+      }
+
+      utterance.onend = () => {
+        sentenceIndex++;
+        setTimeout(speakNextSentence, 300); // Pause between sentences
+      };
+
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
     };
 
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      console.log('[TTS] Finished speaking');
-    };
-
-    utterance.onerror = (event) => {
-      setIsSpeaking(false);
-      console.error('[TTS] Error:', event);
-    };
-
-    window.speechSynthesis.speak(utterance);
+    speakNextSentence();
   };
 
   const stopSpeaking = () => {
@@ -416,8 +472,100 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
               Supportive
             </button>
           </div>
+          <button
+            className={`btn ${showVoiceSettings ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setShowVoiceSettings(!showVoiceSettings)}
+            title="Voice Settings"
+            style={{ marginLeft: '1rem' }}
+          >
+            <Settings size={18} />
+            Voice
+          </button>
         </div>
       </div>
+
+      {/* Voice Settings Panel */}
+      {showVoiceSettings && (
+        <div
+          style={{
+            background: '#f8f9fa',
+            border: '1px solid #dee2e6',
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Voice Settings</h4>
+
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            {/* Voice Selection */}
+            <div style={{ flex: '1', minWidth: '200px' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>
+                Select Voice:
+              </label>
+              <select
+                value={availableVoices.indexOf(selectedVoice || (getBestGoogleVoice() as SpeechSynthesisVoice))}
+                onChange={(e) => {
+                  const voice = availableVoices[parseInt(e.target.value)];
+                  setSelectedVoice(voice);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid #ddd',
+                  fontSize: '0.9rem',
+                }}
+              >
+                {availableVoices.map((voice, idx) => (
+                  <option key={idx} value={idx}>
+                    {voice.name}
+                  </option>
+                ))}
+              </select>
+              {availableVoices.length === 0 && (
+                <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem' }}>
+                  No Google voices available. Using default system voice.
+                </p>
+              )}
+            </div>
+
+            {/* Speech Rate Slider */}
+            <div style={{ flex: '1', minWidth: '150px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 500 }}>Speed:</label>
+                <span style={{ fontSize: '0.85rem', color: '#666' }}>{voiceRate.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={voiceRate}
+                onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Pitch Slider */}
+            <div style={{ flex: '1', minWidth: '150px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 500 }}>Pitch:</label>
+                <span style={{ fontSize: '0.85rem', color: '#666' }}>{voicePitch.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={voicePitch}
+                onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Two-Panel Layout */}
       <div 
