@@ -1,6 +1,6 @@
 # CheetCode
 
-> Real-time AI coding interviewer powered by Keywords AI — Built for hackathons
+> Real-time AI coding interviewer powered by Keywords AI — Built for live interviews
 
 An interactive coding interview platform where an AI interviewer watches you code, provides hints, and gives comprehensive feedback on your performance.
 
@@ -10,7 +10,8 @@ An interactive coding interview platform where an AI interviewer watches you cod
 
 - **Live Code Editor**: Monaco Editor with Python syntax highlighting  
 - **Real-Time Code Execution**: Safe Python code execution via Piston API  
-- **AI Interviewer**: Get hints and guidance from an AI interviewer (powered by Keywords AI)  
+- **AI Interviewer**: Get hints and guidance from an AI interviewer (powered by Keywords AI)
+  - Communicates with the user using audio capture and synthetic voice
 - **Two Interview Modes**:
   - **v1 (Strict)**: Rigorous technical interviewer focusing on best practices  
   - **v2 (Supportive)**: Encouraging coach that guides you more gently  
